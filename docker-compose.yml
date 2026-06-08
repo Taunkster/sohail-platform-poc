@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  sohail-db:
+    image: postgres:15-alpine
+    container_name: sohail_tenant_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-sohail_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-sohail_secure_pass_2026}
+      POSTGRES_DB: ${DB_NAME:-sohail_platform}
+    ports:
+      - "5432:5432"
+    volumes:
+      - sohail_pgdata:/var/lib/postgresql/data
+
+volumes:
+  sohail_pgdata:
