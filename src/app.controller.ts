@@ -27,7 +27,7 @@ export class AppController {
   }
 
   // 2. Apply the Guard to protect the route
-  //@UseGuards(AuthGuard)
+  @UseGuards(AuthGuard)
   @Get('students')
   async getStudents() {
     // ⚠️ Note: Currently returning an empty array. 
