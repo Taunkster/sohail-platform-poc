@@ -1,12 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+const request = require('supertest'); // Using CommonJS require to bypass TS type bugs
 import { AppModule } from './../src/app.module';
 
 describe('Sohail Platform Security Matrix (e2e)', () => {
   let app: INestApplication;
 
-  // The Test Matrix Identities
   const adminA = 'Bearer admin-tenant-a';
   const studentA = 'Bearer student-tenant-a';
   const adminB = 'Bearer admin-tenant-b';
@@ -26,24 +25,15 @@ describe('Sohail Platform Security Matrix (e2e)', () => {
 
   describe('Vertical Security (RBAC)', () => {
     it('Admin can POST /students (201)', () => {
-      return request(app.getHttpServer())
-        .post('/students')
-        .set('Authorization', adminA)
-        .expect(201);
+      return request(app.getHttpServer()).post('/students').set('Authorization', adminA).expect(201);
     });
 
     it('Admin can POST /tasks (201)', () => {
-      return request(app.getHttpServer())
-        .post('/tasks')
-        .set('Authorization', adminA)
-        .expect(201);
+      return request(app.getHttpServer()).post('/tasks').set('Authorization', adminA).expect(201);
     });
 
     it('Student CANNOT POST /tasks (403)', () => {
-      return request(app.getHttpServer())
-        .post('/tasks')
-        .set('Authorization', studentA)
-        .expect(403); // The negative test assertion
+      return request(app.getHttpServer()).post('/tasks').set('Authorization', studentA).expect(403);
     });
 
     it('Student GET /tasks returns scoped payload', () => {
@@ -74,7 +64,7 @@ describe('Sohail Platform Security Matrix (e2e)', () => {
         .set('Authorization', adminB)
         .expect(200)
         .expect((res) => {
-          expect(res.body.tenant).toEqual('tenant_b'); // Proves context shifted safely
+          expect(res.body.tenant).toEqual('tenant_b');
           expect(res.body.tenant).not.toEqual('tenant_a');
         });
     });
