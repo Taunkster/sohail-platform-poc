@@ -9,3 +9,9 @@ This repository contains the Phase 1 backend foundation for Sohail's multi-tenan
 3. Add a `.env` file based on the default configurations.
 4. Run `npm run typeorm migration:run -- -d src/data-source.ts` to execute the database schema migrations.
 5. Connect to the database via `localhost:5432` to verify table creation.
+
+## API Endpoints
+* **GET /students**: Retrieves students (Scoped by RLS & RBAC).
+* **POST /students**: Creates a student (Admin only).
+* **GET /tasks**: Retrieves tasks (Admin sees all; Students see assigned).
+* **POST /tasks**: Creates a task (Admin only).

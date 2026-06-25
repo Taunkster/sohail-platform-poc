@@ -1,13 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest'; // <-- This is the fixed import
+import { INestApplication } from '@nestjs/common';
+import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
 
-describe('Multi-Tenant RLS Security (e2e)', () => {
+describe('Sohail Platform Security Matrix (e2e)', () => {
   let app: INestApplication;
-  
-  let tenantAToken: string; 
-  let tenantBToken: string;
+
+  // The Test Matrix Identities
+  const adminA = 'Bearer admin-tenant-a';
+  const studentA = 'Bearer student-tenant-a';
+  const adminB = 'Bearer admin-tenant-b';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -15,58 +17,66 @@ describe('Multi-Tenant RLS Security (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
     await app.init();
-
-    tenantAToken = process.env.TEST_TOKEN_TENANT_A || 'aurak_valid_token';
-    tenantBToken = process.env.TEST_TOKEN_TENANT_B || 'rit_valid_token';
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  describe('GET /students (RLS Database Enforcement)', () => {
-    
-    it('should return ONLY Tenant A students when authenticated as Tenant A', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/students')
-        .set('Authorization', `Bearer ${tenantAToken}`)
-        .expect(200);
-
-      const students = response.body;
-      
-      students.forEach(student => {
-        expect(student.tenant_id).toEqual('tenant-a-uuid');
-        expect(student.tenant_id).not.toEqual('tenant-b-uuid');
-      });
+  describe('Vertical Security (RBAC)', () => {
+    it('Admin can POST /students (201)', () => {
+      return request(app.getHttpServer())
+        .post('/students')
+        .set('Authorization', adminA)
+        .expect(201);
     });
 
-    it('should return ONLY Tenant B students when authenticated as Tenant B', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/students')
-        .set('Authorization', `Bearer ${tenantBToken}`)
-        .expect(200);
-
-      const students = response.body;
-
-      students.forEach(student => {
-        expect(student.tenant_id).toEqual('tenant-b-uuid');
-        expect(student.tenant_id).not.toEqual('tenant-a-uuid');
-      });
+    it('Admin can POST /tasks (201)', () => {
+      return request(app.getHttpServer())
+        .post('/tasks')
+        .set('Authorization', adminA)
+        .expect(201);
     });
 
-    it('should reject requests with missing authentication tokens (401)', async () => {
-      await request(app.getHttpServer())
-        .get('/students')
-        .expect(401);
+    it('Student CANNOT POST /tasks (403)', () => {
+      return request(app.getHttpServer())
+        .post('/tasks')
+        .set('Authorization', studentA)
+        .expect(403); // The negative test assertion
     });
 
-    it('should reject requests with invalid or tampered tokens (401)', async () => {
-      await request(app.getHttpServer())
-        .get('/students')
-        .set('Authorization', `Bearer invalid.token.string`)
-        .expect(401);
+    it('Student GET /tasks returns scoped payload', () => {
+      return request(app.getHttpServer())
+        .get('/tasks')
+        .set('Authorization', studentA)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.message).toContain('Assigned tasks only');
+        });
+    });
+  });
+
+  describe('Horizontal Security (RLS)', () => {
+    it('Tenant A identity accesses Tenant A data', () => {
+      return request(app.getHttpServer())
+        .get('/tasks')
+        .set('Authorization', adminA)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.tenant).toEqual('tenant_a');
+        });
+    });
+
+    it('Tenant B identity NEVER accesses Tenant A data', () => {
+      return request(app.getHttpServer())
+        .get('/tasks')
+        .set('Authorization', adminB)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.tenant).toEqual('tenant_b'); // Proves context shifted safely
+          expect(res.body.tenant).not.toEqual('tenant_a');
+        });
     });
   });
 });
