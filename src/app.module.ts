@@ -1,10 +1,16 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { LoggerMiddleware } from './logger.middleware';
 
 @Module({
-  imports: [], // <-- Make sure this is empty or only has your DB connections
+  imports: [],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Apply the structured logger to all incoming HTTP requests
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}
