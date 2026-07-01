@@ -1,16 +1,44 @@
 version: '3.8'
+
 services:
-  sohail-db:
+  db:
     image: postgres:15-alpine
-    container_name: sohail_tenant_db
+    container_name: sohail-db
     environment:
-      POSTGRES_USER: ${DB_USER:-sohail_admin}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-sohail_secure_pass_2026}
-      POSTGRES_DB: ${DB_NAME:-sohail_platform}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: sohail_db
+    # Map to 5433 externally to avoid colliding with your Windows Postgres
     ports:
-      - "5432:5432"
+      - "5433:5432" 
     volumes:
-      - sohail_pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Pings the DB every 3 seconds to see if it's ready to accept connections
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sohail_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sohail-api
+    ports:
+      - "3001:3000"
+    environment:
+      # We use 'db' as the host now, relying on Docker's internal DNS
+      DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/sohail_db
+      JWT_SECRET: super_secure_dev_key_2026
+      NODE_ENV: production
+    depends_on:
+      db:
+        # The API will pause and wait until the healthcheck above passes
+        condition: service_healthy
+    # We override the start command to run migrations, THEN boot the app
+    command: sh -c "npx typeorm migration:run -d dist/src/data-source.js && node dist/src/main.js"
 
 volumes:
-  sohail_pgdata:
+  # The named volume ensuring our tenant data persists across reboots
+  pgdata:
