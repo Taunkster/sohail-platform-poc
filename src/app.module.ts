@@ -4,13 +4,12 @@ import { AppService } from './app.service';
 import { LoggerMiddleware } from './logger.middleware';
 
 @Module({
-  imports: [],
+  imports: [], // <-- Back to empty!
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // Apply the structured logger to all incoming HTTP requests
     consumer.apply(LoggerMiddleware).forRoutes('*');
   }
 }
