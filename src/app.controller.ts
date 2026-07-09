@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Res, HttpStatus, Headers } from '@nestjs/common';
-import { AppDataSource } from './data-source';
+// Fix: Use the correct relative path - since we're in src/, data-source.ts is in the same directory
+import { AppDataSource } from './data-source.js';  // Add .js extension for Node module resolution
 import type { Response } from 'express';
 
 @Controller()
