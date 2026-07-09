@@ -1,4 +1,4 @@
-name: Sohail Platform CI
+name: Sohail Platform CI/CD
 
 on:
   push:
@@ -9,8 +9,6 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
-    # Spin up a real PostgreSQL instance for RLS testing
     services:
       postgres:
         image: postgres:15
@@ -49,3 +47,14 @@ jobs:
         run: |
           npm run db:test:reset
           npm run test:e2e
+
+  deploy:
+    needs: build-and-test  # GATE: This job only runs if build-and-test succeeds
+    if: github.ref == 'refs/heads/main' # Only deploy from the main branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deployment
+        run: |
+          curl "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
+          -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+          -X POST
