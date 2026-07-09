@@ -1,78 +1,36 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { Controller, Get, Post, UseGuards, Req } from '@nestjs/common';
-import { AppService } from './app.service';
-import { RolesGuard } from './roles.guard';
-import { Roles } from './roles.decorator';
+import { Controller, Get, Res, HttpStatus } from '@nestjs/common';
+import { AppDataSource } from './data-source';
+import type { Response } from 'express';
 
-
-@Injectable()
-export class AuthGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const authHeader = request.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Invalid or missing authentication token');
-    }
-
-    const token = authHeader.replace('Bearer ', '').trim();
-
-    // The Testing Matrix Tokens
-    if (token === 'admin-tenant-a') {
-      request.user = { sub: '123', tenant_id: 'tenant_a', role: 'admin' };
-      return true;
-    }
-    if (token === 'student-tenant-a') {
-      request.user = { sub: '456', tenant_id: 'tenant_a', role: 'student' };
-      return true;
-    }
-    if (token === 'admin-tenant-b') {
-      request.user = { sub: '999', tenant_id: 'tenant_b', role: 'admin' };
-      return true;
-    }
-
-    throw new UnauthorizedException('Invalid token');
-  }
-}
-
-@Controller()
-@UseGuards(AuthGuard, RolesGuard)
+@Controller('health')
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  
+  @Get('live')
+  getLive(@Res() res: Response) {
+    return res.status(HttpStatus.OK).json({ status: 'UP', timestamp: new Date().toISOString() });
+  }
 
-  @Get('students')
-  async getStudents(@Req() req) {
-    const user = req.user;
-    if (user.role === 'admin') {
-      return { message: 'Admin view: All students', tenant: user.tenant_id };
-    } else {
-      return { message: 'Student view: Own record only', tenant: user.tenant_id, id: user.sub };
+  @Get('ready')
+  async getReady(@Res() res: Response) {
+    try {
+      // Connect the driver if it isn't already connected!
+      if (!AppDataSource.isInitialized) {
+        await AppDataSource.initialize();
+      }
+      
+      await AppDataSource.query('SELECT 1');
+      
+      return res.status(HttpStatus.OK).json({
+        status: 'READY',
+        database: 'CONNECTED',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      return res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        status: 'DOWN',
+        database: 'UNREACHABLE',
+        error: error.message
+      });
     }
-  }
-
-  @Post('students')
-  @Roles('admin')
-  async createStudent() {
-    return { message: 'Student created successfully' };
-  }
-
-  // --- NEW TASK ENDPOINTS ---
-
-  @Get('tasks')
-  async getTasks(@Req() req) {
-    const user = req.user;
-    // RLS inherently blocks cross-tenant data at the DB level.
-    // RBAC scopes the remaining data at the application level.
-    if (user.role === 'admin') {
-      return { message: 'Admin view: All tasks in tenant', tenant: user.tenant_id };
-    } else {
-      return { message: 'Student view: Assigned tasks only', tenant: user.tenant_id, id: user.sub };
-    }
-  }
-
-  @Post('tasks')
-  @Roles('admin') // 🔒 Strict RBAC Requirement
-  async createTask() {
-    return { message: 'Task created successfully' };
   }
 }
