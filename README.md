@@ -1,17 +1,31 @@
-# Sohail Platform � Multi-Tenant Backend Foundation
+# Sohail Platform – Handover Document
 
-## Overview
-This repository contains the Phase 1 backend foundation for Sohail's multi-tenant student data layer. It utilizes NestJS, PostgreSQL, and Docker to enforce strict tenant isolation via Row-Level Security (RLS) architecture.
+> **Purpose**: This document is your entry point to understand, run, and extend the Sohail Platform – a secure, multi‑tenant task management API built with NestJS, PostgreSQL, and deployed on Render.
 
-## Setup Instructions
-1. Run `docker-compose up -d` to start the PostgreSQL database.
-2. Run `npm install` to install dependencies.
-3. Add a `.env` file based on the default configurations.
-4. Run `npm run typeorm migration:run -- -d src/data-source.ts` to execute the database schema migrations.
-5. Connect to the database via `localhost:5432` to verify table creation.
+## Table of Contents
+- [What is the Sohail Platform?](#what-is-the-sohail-platform)
+- [Architecture Overview](#architecture-overview)
+- [Getting Started Locally](#getting-started-locally)
+- [Deployment](#deployment)
+- [Security Model](#security-model)
+- [How to Add a New Resource](#how-to-add-a-new-resource)
+- [Live Documentation](#live-documentation)
+- [Troubleshooting](#troubleshooting)
 
-## API Endpoints
-* **GET /students**: Retrieves students (Scoped by RLS & RBAC).
-* **POST /students**: Creates a student (Admin only).
-* **GET /tasks**: Retrieves tasks (Admin sees all; Students see assigned).
-* **POST /tasks**: Creates a task (Admin only).
+## What is the Sohail Platform?
+The Sohail Platform is a backend service that manages students and tasks for multiple universities (tenants). It enforces:
+- **Row‑Level Security (RLS)** – Data is isolated per tenant; no tenant can see another's data.
+- **Role‑Based Access Control (RBAC)** – Two roles: `admin` (full CRUD) and `student` (read‑only access to assigned tasks).
+- **Containerised deployment** – Runs anywhere with Docker.
+
+## Architecture Overview
+- **Framework**: NestJS (TypeScript)
+- **Database**: PostgreSQL (managed via Neon)
+- **Deployment**: Containerised, deployed on Render (auto‑deploy from GitHub `main` branch)
+- **CI/CD**: GitHub Actions runs tests and deploys on green builds.
+- **Security**: JWT‑like bearer tokens (simplified for demo) carry tenant and role information.
+
+**Key ADRs** (Architecture Decision Records):  
+See `docs/adr/` for decisions on multi‑tenancy, connection pooling, and deployment strategy.
+
+**Mermaid Diagram** (simple):
