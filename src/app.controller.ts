@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Res, HttpStatus, Headers } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 import { AppDataSource } from './data-source';
 import type { Response } from 'express';
 
-@ApiTags('Platform Core')
+@ApiTags('Health')
 @Controller()
 export class AppController {
   
@@ -11,7 +11,6 @@ export class AppController {
   private extractTenant(auth: string): string {
     if (!auth) return 'unauthenticated';
     const tenant = auth.replace('Bearer ', '');
-    // Remove role prefix and convert hyphens to underscores
     return tenant
       .replace('admin-', '')
       .replace('student-', '')
@@ -19,8 +18,8 @@ export class AppController {
   }
 
   @Get('health/live')
-  @ApiOperation({ summary: 'Check if the container is running' })
-  @ApiResponse({ status: 200, description: 'Container is UP.' })
+  @ApiOperation({ summary: 'Liveness probe - checks if the service is running' })
+  @ApiResponse({ status: 200, description: 'Service is up and running.' })
   getLive(@Res() res: Response) {
     return res.status(HttpStatus.OK).json({ 
       status: 'UP', 
@@ -29,9 +28,9 @@ export class AppController {
   }
 
   @Get('health/ready')
-  @ApiOperation({ summary: 'Check database connectivity' })
-  @ApiResponse({ status: 200, description: 'Database is CONNECTED.' })
-  @ApiResponse({ status: 503, description: 'Database is UNREACHABLE.' })
+  @ApiOperation({ summary: 'Readiness probe - checks database connectivity' })
+  @ApiResponse({ status: 200, description: 'Database connected and ready.' })
+  @ApiResponse({ status: 503, description: 'Database unreachable.' })
   async getReady(@Res() res: Response) {
     try {
       if (!AppDataSource.isInitialized) {
@@ -55,10 +54,14 @@ export class AppController {
 
   // --- STUDENTS ENDPOINTS ---
 
+  @ApiTags('Students')
+  @ApiBearerAuth('JWT-auth')
   @Post('students')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new student in the tenant context' })
+  @ApiOperation({ summary: 'Create a new student (Admin only)' })
   @ApiResponse({ status: 201, description: 'Student created successfully.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token.' })
+  @ApiResponse({ status: 403, description: 'Forbidden - requires admin role.' })
+  @ApiHeader({ name: 'Authorization', description: 'Bearer token (e.g., admin-tenant-a)' })
   createStudent(@Headers('authorization') auth: string, @Res() res: Response) {
     const tenantName = this.extractTenant(auth);
     
@@ -73,10 +76,13 @@ export class AppController {
     });
   }
 
+  @ApiTags('Students')
+  @ApiBearerAuth('JWT-auth')
   @Get('students')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Retrieve all students for the authenticated tenant' })
-  @ApiResponse({ status: 200, description: 'Array of isolated tenant students.' })
+  @ApiOperation({ summary: 'Get all students for the authenticated tenant' })
+  @ApiResponse({ status: 200, description: 'List of students scoped by tenant.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token.' })
+  @ApiHeader({ name: 'Authorization', description: 'Bearer token (e.g., student-tenant-a)' })
   getStudents(@Headers('authorization') auth: string, @Res() res: Response) {
     const tenantName = this.extractTenant(auth);
     
@@ -101,11 +107,14 @@ export class AppController {
 
   // --- TASKS ENDPOINTS ---
 
+  @ApiTags('Tasks')
+  @ApiBearerAuth('JWT-auth')
   @Post('tasks')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new task in the tenant context (Requires Admin Role)' })
-  @ApiResponse({ status: 201, description: 'Task successfully created.' })
-  @ApiResponse({ status: 403, description: 'Forbidden: Students cannot create tasks.' })
+  @ApiOperation({ summary: 'Create a new task (Admin only)' })
+  @ApiResponse({ status: 201, description: 'Task created successfully.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token.' })
+  @ApiResponse({ status: 403, description: 'Forbidden - only admins can create tasks.' })
+  @ApiHeader({ name: 'Authorization', description: 'Bearer token (e.g., admin-tenant-a)' })
   createTask(@Headers('authorization') auth: string, @Res() res: Response) {
     const tenant = auth ? auth.replace('Bearer ', '') : 'unauthenticated';
     const tenantName = this.extractTenant(auth);
@@ -124,10 +133,13 @@ export class AppController {
     });
   }
 
+  @ApiTags('Tasks')
+  @ApiBearerAuth('JWT-auth')
   @Get('tasks')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Retrieve all tasks for the authenticated tenant' })
-  @ApiResponse({ status: 200, description: 'Array of isolated tenant tasks.' })
+  @ApiOperation({ summary: 'Get tasks for the authenticated tenant' })
+  @ApiResponse({ status: 200, description: 'List of tasks scoped by tenant and role.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token.' })
+  @ApiHeader({ name: 'Authorization', description: 'Bearer token (e.g., student-tenant-a)' })
   getTasks(@Headers('authorization') auth: string, @Res() res: Response) {
     const tenant = auth ? auth.replace('Bearer ', '') : 'unauthenticated';
     const tenantName = this.extractTenant(auth);

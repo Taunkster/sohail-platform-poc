@@ -17,20 +17,20 @@ async function bootstrap() {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description: 'Enter your JWT token (e.g. `admin-tenant-a` or `student-tenant-a`)',
+        description: 'Enter your token (e.g., `admin-tenant-a` or `student-tenant-a`)',
       },
-      'JWT-auth', // This name is used in @ApiBearerAuth() decorators
+      'JWT-auth',
     )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document, {
     swaggerOptions: {
-      persistAuthorization: true, // Keep the token when refreshing
+      persistAuthorization: true,
     },
   });
 
-  // --- Existing shutdown hooks and port ---
+  // --- Existing shutdown hooks ---
   app.enableShutdownHooks();
   const port = process.env.PORT || 3000;
   await app.listen(port);
