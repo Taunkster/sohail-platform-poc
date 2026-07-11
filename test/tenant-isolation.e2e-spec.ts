@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Res, HttpStatus, Headers } from '@nestjs/common';
-import { AppDataSource } from './data-source';
+import { AppDataSource } from '../src/data-source';
 import type { Response } from 'express';
 
 @Controller()
